@@ -1,0 +1,4 @@
+Help me create a Nextjs page based on `raw_forms\AccidentSuranceClaimForm.pdf`.
+Try to recreate the form page with all the text, inputs, buttons etc etc.
+You can read the folder `figma` for the design style and reference.
+All the inputs and buttons should have their own components for future reuse.

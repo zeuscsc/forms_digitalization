@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@theme {
+  --color-hsbc-red: #DB0011;
+  --color-hsbc-black: #333333;
+  --color-hsbc-gray-100: #F6F6F6;
+  --color-hsbc-gray-200: #EAEAEA;
+  --color-hsbc-gray-300: #D7D8D6;
+  --color-hsbc-gray-400: #767676;
+  
+  --font-hsbc: "Univers Next for HSBC", Arial, sans-serif;
+  --font-public: "Public Sans", sans-serif;
+}
+
+:root {
+  --semantic-color-background-canvas-standard: #ffffff;
+  --semantic-color-text-primary-default: #333333;
+  --comp-inputField-color-inactive-title-text-normal: #333333;
+  --comp-inputField-color-active-title-text-normal: #333333;
+  --comp-inputField-color-error-title-text: #DB0011;
+  --comp-inlineMessage-color-error-text: #DB0011;
+}
+
+body {
+  color: var(--semantic-color-text-primary-default);
+  background: var(--semantic-color-background-canvas-standard);
+  font-family: var(--font-hsbc);
+}
