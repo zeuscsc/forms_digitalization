@@ -23,6 +23,14 @@ export const claimFormSchema = z.object({
 
   // Section 4: Doctor Details
   doctorNameAndAddress: z.string().min(1, "Doctor's name and address is required"),
+  doctorCertifyName: z.string().optional(),
+  doctorInjuryDate: z.string().optional(),
+  doctorInjuries: z.string().optional(),
+  doctorComplicationDetails: z.string().optional(),
+  doctorDisabilityType: z.enum(["totally", "partially"]).optional(),
+  doctorDisabledUntil: z.string().optional(),
+  doctorSignatureDate: z.string().optional(),
+  doctorQualifications: z.string().optional(),
 
   // Section 5: Disability
   disabledFrom: z.string().optional(),
