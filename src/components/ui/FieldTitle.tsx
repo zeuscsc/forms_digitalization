@@ -17,7 +17,7 @@ const FieldTitle = React.forwardRef<HTMLLabelElement, FieldTitleProps>(
       <label
         ref={ref}
         className={cn(
-          "text-base font-normal text-hsbc-black font-hsbc mb-1.5 block",
+          "text-sm md:text-base font-normal text-hsbc-black font-hsbc mb-1.5 block leading-tight",
           className
         )}
         {...props}

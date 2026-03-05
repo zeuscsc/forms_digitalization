@@ -60,6 +60,11 @@ export const claimFormSchema = z.object({
   bankCode: z.string().optional(),
   branchCode: z.string().optional(),
   accountNo: z.string().optional(),
+
+  // Section 8: Declaration
+  declarationAccepted: z.boolean().refine((val) => val === true, {
+    message: "You must accept the terms and conditions",
+  }),
 });
 
 export type ClaimFormData = z.infer<typeof claimFormSchema>;

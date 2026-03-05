@@ -13,8 +13,8 @@ interface RadioButtonProps extends React.InputHTMLAttributes<HTMLInputElement> {
 const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
   ({ label, className, ...props }, ref) => {
     return (
-      <label className="group flex items-center gap-3 cursor-pointer select-none">
-        <div className="relative flex items-center">
+      <label className="group flex items-center gap-3 cursor-pointer select-none py-2 px-1">
+        <div className="relative flex items-center justify-center">
           <input
             type="radio"
             className="peer sr-only"
@@ -24,13 +24,13 @@ const RadioButton = React.forwardRef<HTMLInputElement, RadioButtonProps>(
           <div
             className={cn(
               "w-6 h-6 border rounded-full transition-colors",
-              "border-hsbc-gray-400 bg-white",
+              "border-hsbc-gray-400 bg-white flex items-center justify-center",
               "peer-checked:border-hsbc-black",
               "peer-focus-visible:ring-2 peer-focus-visible:ring-hsbc-black peer-focus-visible:ring-offset-2",
               className
             )}
           />
-          <div className="absolute w-3 h-3 bg-hsbc-black rounded-full opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none left-1.5 top-1.5" />
+          <div className="absolute w-3 h-3 bg-hsbc-black rounded-full opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
         <span className="text-base font-hsbc text-hsbc-black group-hover:text-hsbc-black">
           {label}

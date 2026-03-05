@@ -41,18 +41,18 @@ const QuantitySelector = ({
         <button
           type="button"
           onClick={decrement}
-          className="flex h-11 w-11 items-center justify-center border border-hsbc-gray-300 bg-white hover:bg-hsbc-gray-100 active:bg-hsbc-gray-200 transition-colors disabled:opacity-50"
+          className="flex h-12 w-12 items-center justify-center border border-hsbc-gray-300 bg-white hover:bg-hsbc-gray-100 active:bg-hsbc-gray-200 transition-colors disabled:opacity-50"
           disabled={value <= min}
         >
           <span className="text-xl font-medium">−</span>
         </button>
-        <div className="flex h-11 w-16 items-center justify-center border-y border-hsbc-gray-300 bg-white font-hsbc text-base">
+        <div className="flex h-12 w-16 items-center justify-center border-y border-hsbc-gray-300 bg-white font-hsbc text-base">
           {value}
         </div>
         <button
           type="button"
           onClick={increment}
-          className="flex h-11 w-11 items-center justify-center border border-hsbc-gray-300 bg-white hover:bg-hsbc-gray-100 active:bg-hsbc-gray-200 transition-colors disabled:opacity-50"
+          className="flex h-12 w-12 items-center justify-center border border-hsbc-gray-300 bg-white hover:bg-hsbc-gray-100 active:bg-hsbc-gray-200 transition-colors disabled:opacity-50"
           disabled={value >= max}
         >
           <span className="text-xl font-medium">+</span>
