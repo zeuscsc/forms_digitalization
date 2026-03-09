@@ -26,3 +26,13 @@ body {
   background: var(--semantic-color-background-canvas-standard);
   font-family: var(--font-hsbc);
 }
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

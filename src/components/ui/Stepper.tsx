@@ -14,7 +14,7 @@ interface StepperProps {
 
 export function Stepper({ steps, currentStep, className }: StepperProps) {
   return (
-    <div className={cn("w-full py-4 bg-white sticky top-0 z-10 border-b border-hsbc-gray-200 px-4", className)}>
+    <div className={cn("w-full py-4 bg-white border-b border-hsbc-gray-200 px-4", className)}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-hsbc-red uppercase tracking-widest">
           Step {currentStep + 1} of {steps.length}

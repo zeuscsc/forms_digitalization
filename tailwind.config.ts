@@ -13,10 +13,12 @@ const config: Config = {
           red: "#DB0011",
           black: "#333333",
           gray: {
+            50: "#F9F9F9",
             100: "#F6F6F6",
             200: "#EAEAEA",
             300: "#D7D8D6",
             400: "#767676",
+            500: "#4D4D4D",
           }
         },
         semantic: {

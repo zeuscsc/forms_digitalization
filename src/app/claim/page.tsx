@@ -13,6 +13,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { RadioGroup, RadioButton } from "@/components/ui/RadioGroup";
 import { FieldTitle } from "@/components/ui/FieldTitle";
 import { MobileStatusBar } from "@/components/ui/MobileStatusBar";
+import { Stepper } from "@/components/ui/Stepper";
 import { ChevronLeft } from "lucide-react";
 
 const STEPS = [
@@ -54,8 +55,8 @@ export default function ClaimPage() {
     const element = scrollRef.current;
     if (element) {
       const { scrollTop, scrollHeight, clientHeight } = element;
-      // Check if scrolled to bottom with a small tolerance (e.g. 5px)
-      if (Math.abs(scrollHeight - clientHeight - scrollTop) < 5) {
+      // Standardized tolerance to 10px
+      if (Math.abs(scrollHeight - clientHeight - scrollTop) < 10) {
         setHasScrolledToBottom(true);
       }
     }
@@ -71,7 +72,6 @@ export default function ClaimPage() {
     const fieldsToValidate: any = {
       0: ["policyNo", "nameOfInsured", "phoneNo", "address", "insuredPersonName", "age", "sex", "occupation", "relationshipToInsured"],
       1: ["accidentDate", "accidentTime", "accidentPlace", "accidentCause"],
-      // Add more as needed
     };
 
     if (fieldsToValidate[currentStep]) {
@@ -97,41 +97,32 @@ export default function ClaimPage() {
   const hasConcurrentClaim = watch("hasConcurrentClaim");
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans">
+    <div className="min-h-screen bg-white flex flex-col font-sans relative w-full max-w-md mx-auto">
       <MobileStatusBar />
       
       {/* App Header */}
-      <header className="bg-white px-4 py-3 flex items-center justify-between sticky top-[38px] z-40 border-b border-gray-100">
-        <button type="button" onClick={prevStep} className="p-1 -ml-1 text-gray-900">
-            <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-lg font-semibold text-gray-900">File a Claim</h1>
-        <button type="button" className="text-base font-medium text-gray-900">Cancel</button>
+      <header className="bg-white px-4 py-3 flex items-center justify-between sticky top-[40px] z-40 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={prevStep} className="p-1 -ml-1 text-gray-900 transition-transform active:scale-90">
+              <ChevronLeft size={24} />
+          </button>
+        </div>
+        <h1 className="text-sm font-bold text-gray-900 tracking-tight absolute left-1/2 -translate-x-1/2">File a Claim</h1>
+        <button type="button" className="text-sm font-bold text-hsbc-red uppercase tracking-wider">Cancel</button>
       </header>
 
-      {/* Stepper */}
-      <div className="px-4 pt-4 pb-2 bg-white">
-          <div className="flex justify-between items-baseline mb-1">
-              <span className="text-sm font-medium text-hsbc-red">Step {currentStep + 1} of {STEPS.length}</span>
-          </div>
-          <div className="h-1 bg-gray-200 w-full mb-6">
-              <div 
-                  className="h-full bg-hsbc-red transition-all duration-300"
-                  style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
-              ></div>
-          </div>
-      </div>
+      {/* Standardized Stepper Component */}
+      <Stepper steps={STEPS} currentStep={currentStep} className="border-none" />
 
-      <main className="flex-1 w-full max-w-4xl mx-auto px-4 pb-24">
+      <main className="flex-1 w-full px-4 pb-24 overflow-x-hidden">
         <form onSubmit={handleSubmit(onSubmit)} className="h-full">
           {/* Section 1: Policy Details */}
           {currentStep === 0 && (
             <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
-              
               <div className="space-y-10">
                   <section>
                     <SectionHeader title="1. Policy Details" className="mt-0" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <Input
                         label="Policy No. 保單編號"
                         placeholder="e.g. 12345678"
@@ -165,7 +156,7 @@ export default function ClaimPage() {
 
                   <section>
                     <SectionHeader title="2. Person Injured" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 gap-6">
                       <Input
                         label="Name of Person Injured 受傷人士姓名"
                         placeholder="Full name"
@@ -224,15 +215,10 @@ export default function ClaimPage() {
 
           {/* Section 2: Accident Details */}
           {currentStep === 1 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Accident Details</h2>
-                  <p className="text-sm text-hsbc-gray-400 italic">DATE, TIME AND PLACE OF ACCIDENT 意外發生的日期、時間和地點</p>
-                </div>
-
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <SectionHeader title="Accident Details" subtitle="DATE, TIME AND PLACE OF ACCIDENT 意外發生的日期、時間和地點" className="mt-0" />
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 gap-6">
                     <Input
                       type="date"
                       label="Date of Accident 意外發生日期"
@@ -263,19 +249,13 @@ export default function ClaimPage() {
                     error={errors.accidentCause?.message}
                   />
                 </div>
-              </Card>
             </div>
           )}
 
           {/* Section 3: Medical Cert */}
           {currentStep === 2 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Medical Certificate</h2>
-                  <p className="text-sm text-hsbc-gray-400 italic">To be completed by Insured Person’s Doctor 由受保人主診醫生填寫</p>
-                </div>
-
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <SectionHeader title="Medical Certificate" subtitle="To be completed by Insured Person’s Doctor 由受保人主診醫生填寫" className="mt-0" />
                 <div className="space-y-8">
                   <Input
                     label="Name and address of attending doctor 診症醫生姓名及地址"
@@ -299,18 +279,13 @@ export default function ClaimPage() {
                     </div>
                   </div>
                 </div>
-              </Card>
             </div>
           )}
 
           {/* Section 4: Disability */}
           {currentStep === 3 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Disability Period</h2>
-                </div>
-
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <SectionHeader title="Disability Period" className="mt-0" />
                 <div className="space-y-8">
                   <div>
                     <FieldTitle>Period of total disability 傷者完全失去工作能力的期間</FieldTitle>
@@ -339,18 +314,13 @@ export default function ClaimPage() {
                     )}
                   </div>
                 </div>
-              </Card>
             </div>
           )}
 
           {/* Section 5: Hospitalization */}
           {currentStep === 4 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Hospitalization & Others</h2>
-                </div>
-
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <SectionHeader title="Hospitalization & Others" className="mt-0" />
                 <div className="space-y-10">
                   <section className="space-y-4">
                     <FieldTitle>Was the injured person hospitalized? 傷者有否就此次意外而住院?</FieldTitle>
@@ -381,18 +351,13 @@ export default function ClaimPage() {
                     )}
                   </section>
                 </div>
-              </Card>
             </div>
           )}
 
           {/* Section 6: Payment */}
           {currentStep === 5 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Payment Method</h2>
-                </div>
-
+            <div className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                <SectionHeader title="Payment Method" className="mt-0" />
                 <div className="space-y-8">
                   <RadioGroup>
                     <RadioButton
@@ -419,7 +384,6 @@ export default function ClaimPage() {
                     </div>
                   )}
                 </div>
-              </Card>
             </div>
           )}
 
@@ -436,7 +400,7 @@ export default function ClaimPage() {
                     <div 
                       ref={scrollRef}
                       onScroll={handleScroll}
-                      className="bg-gray-50 p-6 rounded-lg h-96 overflow-y-auto text-sm text-gray-700 leading-relaxed border border-gray-200"
+                      className="bg-gray-50 p-6 rounded-lg h-96 overflow-y-auto text-[11px] text-gray-700 leading-relaxed border border-gray-200"
                     >
                       <div className="text-center font-medium text-gray-500 mb-6 border-b border-gray-200 pb-2">--- Start of content ---</div>
 
@@ -483,7 +447,7 @@ export default function ClaimPage() {
                       id="agree"
                     />
                     {!hasScrolledToBottom && (
-                         <div className="text-sm text-hsbc-red font-medium mt-2 animate-pulse">
+                         <div className="text-xs text-hsbc-red font-medium mt-2 animate-pulse">
                             Scroll to the bottom of the terms to continue
                          </div>
                     )}
@@ -498,38 +462,38 @@ export default function ClaimPage() {
             </div>
           )}
 
-          {/* Sticky Bottom Action Bar */}
-          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-hsbc-gray-200 p-4 z-30 md:static md:bg-transparent md:border-none md:p-0 md:mt-8">
-            <div className="max-w-4xl mx-auto flex gap-4">
-              {currentStep > 0 && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={prevStep}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-              )}
-              {currentStep < STEPS.length - 1 ? (
-                <Button 
-                  type="button" 
-                  onClick={nextStep}
-                  className="flex-1"
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button 
-                  type="submit" 
-                  // @ts-ignore
-                  disabled={!watch("declarationAccepted")}
-                  className="flex-1 transition-all duration-300"
-                >
-                  Submit Claim
-                </Button>
-              )}
-            </div>
+          {/* Sticky Bottom Action Bar - Standardized rounding and z-index */}
+          <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-hsbc-gray-200 p-4 z-30 flex gap-4 max-w-md mx-auto rounded-b-[2.8rem]">
+            {currentStep > 0 && (
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={prevStep}
+                className="flex-1"
+              >
+                Back
+              </Button>
+            )}
+            {currentStep < STEPS.length - 1 ? (
+              <Button 
+                type="button" 
+                variant="primary"
+                onClick={nextStep}
+                className="flex-1"
+              >
+                Next
+              </Button>
+            ) : (
+              <Button 
+                type="submit" 
+                variant="primary"
+                // @ts-ignore
+                disabled={!watch("declarationAccepted")}
+                className="flex-1 transition-all duration-300"
+              >
+                Submit Claim
+              </Button>
+            )}
           </div>
         </form>
       </main>
