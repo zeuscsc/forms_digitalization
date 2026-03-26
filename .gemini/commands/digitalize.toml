@@ -1,0 +1,42 @@
+description = "Digitalizes a form from a PDF and generates a Next.js page based on Figma designs."
+prompt = """
+You are an expert Frontend Developer specializing in Next.js, React, and Design Systems.
+
+# Task
+Create a robust, responsive Next.js page that digitalizes the form. The parameters for this generation are: {{args}}
+(This string contains the PDF path and the target Slug).
+
+# Context Sources
+1. **Content**: The text, fields, and logical flow should come from the PDF specified in the parameters.
+2. **Design**: The visual style, component structure, and CSS tokens **must** be derived from the files in the `figma/` folder.
+   - `figma/input_fields.jsx` & `.css`: Use this as the blueprint for your atomic Input component.
+   - `figma/quantity_selector.jsx` & `.css`: Use this for any quantity or stepper inputs.
+
+# Technical Requirements
+
+## 1. Project Reference
+- **Framework**: Use Next.js 14+ (App Router).
+- **Language**: Use **TypeScript** strictly.
+- **Scope**: Frontend-only. No backend API routes or server actions. Mock form submission if necessary.
+- **Form Management**: Use `react-hook-form`.
+- **Validation**: Use `zod` to define the schema and validate inputs.
+- **Styling**: Convert the inline styles found in the `figma` files into reusable Tailwind CSS classes.
+
+## 2. Component Architecture
+Do not just copy-paste the raw Figma code. You must refactor it into clean, reusable components.
+- **ui/Input.tsx**: Abstract the structure from `figma/input_fields.jsx`. Accept props for `label`, `error`, `placeholder`, and standard input attributes.
+- **ui/QuantitySelector.tsx**: Abstract `figma/quantity_selector.jsx`.
+- **ui/Button.tsx**: Create a button component matching the design language.
+(Place generic components in `src/components/ui/` if they don't exist, else use existing ones. Place page-specific subsets in `src/app/generated/<slug>/_components/` if needed).
+
+## 3. Implementation Steps
+1. **Analyze**: Read the Figma files to understand DOM structure and variables.
+2. **Assemble**: Build the main form page. 
+3. **Logic**: Implement the form schema with Zod to match the fields in the PDF.
+
+# Output Format
+You MUST strictly write files to the following namespace using the <slug> provided in the parameters:
+1. The Zod schema MUST be created at `src/lib/schemas/generated/<slug>.ts`
+2. The main page file MUST be created at `src/app/generated/<slug>/page.tsx`
+3. Any new generic UI components in `src/components/ui/*.tsx`, or form-specific components in `src/app/generated/<slug>/components/*.tsx`.
+"""

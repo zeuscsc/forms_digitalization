@@ -3,55 +3,89 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import { FileUpload } from "@/components/ui/FileUpload";
-import ClaimPage from "./claim/page";
-import ChangeInfoPage from "./change-info/page";
 import { MobileStatusBar } from "@/components/ui/MobileStatusBar";
-import { FileText, ArrowRight, ShieldCheck, Zap, Info, Settings, History, HelpCircle, Loader2, Smartphone } from "lucide-react";
+import { FileText, ArrowRight, ShieldCheck, Zap, Info, Settings, History, HelpCircle, Loader2, Smartphone, RefreshCw } from "lucide-react";
 
 export default function Home() {
   const [isUploaded, setIsUploaded] = useState(false);
   const [activeTab, setActiveTab] = useState("upload");
   const [formType, setFormType] = useState<"claim" | "changeInfo" | null>(null);
+  const [generatedRoute, setGeneratedRoute] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
+  const [previewKey, setPreviewKey] = useState(0);
 
-  const handleUploadSuccess = (file: File) => {
+  const handleUploadSuccess = async (file: File) => {
     setIsProcessing(true);
     setLogs([]);
     setIsUploaded(false);
 
-    const steps = [
-      { msg: "PDF Analysis & Data Extraction (PDF MCP)", delay: 800 },
-      { msg: "Section Identification & Logical Grouping", delay: 2500 },
-      { msg: "Schema Generation (Zod) for Validation", delay: 3800 },
-      { msg: "HSBC Design Tokens Retrieval (Figma MCP)", delay: 5000 },
-      { msg: "Component Library Selection (GDS)", delay: 6800 },
-      { msg: "Next.js Page Scaffolding & Component Mapping", delay: 8200 },
-      { msg: "Technical Integrity & UI Validation", delay: 9500 },
-    ];
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    setLogs([{ status: 'active', msg: 'Uploading PDF to API...', time: timeStr }]);
 
-    steps.forEach((step, index) => {
-      setTimeout(() => {
-        const now = new Date();
-        const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        
-        setLogs(prev => {
-          // Mark previous active as complete
-          const updated = prev.map(log => ({ ...log, status: 'complete' }));
-          return [...updated, { status: index === steps.length - 1 ? 'complete' : 'active', msg: step.msg, time: timeStr }];
-        });
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-        if (index === steps.length - 1) {
-          setIsProcessing(false);
-          setIsUploaded(true);
-          if (file.name.toLowerCase().includes("change_of_customer_information")) {
-            setFormType("changeInfo");
-          } else {
-            setFormType("claim");
-          }
-        }
-      }, step.delay);
-    });
+      const fetchPromise = fetch("/api/generate-form", {
+        method: "POST",
+        body: formData,
+      });
+
+      const steps = [
+        { msg: "PDF Analysis & Data Extraction (PDF MCP)", delay: 800 },
+        { msg: "Section Identification & Logical Grouping", delay: 2500 },
+        { msg: "Schema Generation (Zod) for Validation", delay: 3800 },
+        { msg: "Executing Gemini CLI with Prompts...", delay: 5000 },
+      ];
+
+      steps.forEach((step, index) => {
+        setTimeout(() => {
+          const stepTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setLogs(prev => {
+            const updated = prev.map(log => ({ ...log, status: 'complete' }));
+            return [...updated, { status: 'active', msg: step.msg, time: stepTimeStr }];
+          });
+        }, step.delay);
+      });
+
+      const response = await fetchPromise;
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API Error: ${response.statusText}`);
+      }
+
+      const responseData = await response.json();
+
+      const finalTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLogs(prev => {
+        const updated = prev.map(log => ({ ...log, status: 'complete' }));
+        return [...updated, { status: 'complete', msg: "Technical Integrity & UI Validation Completed!", time: finalTimeStr }];
+      });
+
+      if (responseData.route) {
+        setGeneratedRoute(responseData.route);
+        setFormType(null); // Clear predefined form types
+      } else if (file.name.toLowerCase().includes("change_of_customer_information")) {
+        setFormType("changeInfo");
+      } else {
+        setFormType("claim");
+      }
+
+      setIsProcessing(false);
+      setIsUploaded(true);
+      setPreviewKey(prev => prev + 1);
+
+    } catch (error) {
+      console.error(error);
+      const errTimeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLogs(prev => {
+        const updated = prev.map(log => ({ ...log, status: 'complete' }));
+        return [...updated, { status: 'error', msg: "Error processing document: " + String(error), time: errTimeStr }];
+      });
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -112,7 +146,9 @@ export default function Home() {
                   
                   <div className="space-y-4">
                     <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                      <Info className="text-gray-400 mt-0.5 flex-shrink-0" size={18} />
+                      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                         <Info className="text-blue-500" size={16} />
+                      </div>
                       <p className="text-xs text-gray-500 leading-relaxed font-medium">
                         Upload a form or Change of Customer Information form. Our AI will automatically parse the document.
                       </p>
@@ -138,9 +174,15 @@ export default function Home() {
                       <ShieldCheck size={20} />
                       <span className="text-sm">Extraction Successful</span>
                     </div>
-                    <p className="text-xs text-green-600 leading-relaxed">
+                    <p className="text-xs text-green-600 leading-relaxed font-medium">
                       All data points have been mapped. You can now review and edit the information in the mobile preview on the right.
                     </p>
+                    {generatedRoute && (
+                      <div className="mt-4 p-3 bg-white rounded-xl border border-green-200 flex items-center justify-between shadow-sm">
+                         <span className="text-xs font-bold text-gray-500">Generated Route:</span>
+                         <code className="text-xs font-mono font-bold text-green-700 bg-green-50 px-2 py-1 rounded-md">{generatedRoute}</code>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-4">
@@ -152,8 +194,12 @@ export default function Home() {
                       Upload New Document
                     </button>
                     
-                    <button className="w-full py-4 px-6 bg-hsbc-red rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-3 hover:bg-red-700 transition-all shadow-lg shadow-red-500/20">
-                      Sync to Backend
+                    <button 
+                      onClick={() => setPreviewKey(prev => prev + 1)}
+                      className="w-full py-4 px-6 bg-hsbc-red rounded-2xl text-sm font-bold text-white flex items-center justify-center gap-3 hover:bg-red-700 transition-all shadow-lg shadow-red-500/20"
+                    >
+                      <RefreshCw size={18} />
+                      Refresh Preview
                     </button>
                   </div>
                 </div>
@@ -185,63 +231,57 @@ export default function Home() {
           {/* Subtle Grid Background */}
           <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:32px_32px] opacity-40"></div>
           
-          <div className="relative z-10 w-full flex flex-col items-center">
-            {/* Context Tooltip */}
-            <div className="mb-8 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-widest">
-              <Smartphone size={16} className="text-gray-400" /> Device Mockup • Pixel 7
+          {isProcessing && (
+            <div className="relative z-10 flex flex-col items-center justify-center text-center animate-in fade-in duration-500">
+               <div className="w-24 h-24 bg-white rounded-[2rem] shadow-xl border border-gray-50 flex items-center justify-center mb-8 relative">
+                  <div className="absolute inset-0 bg-red-50 rounded-[2rem] animate-ping opacity-20"></div>
+                  <Loader2 className="animate-spin text-hsbc-red relative z-10" size={40} />
+               </div>
+               <h3 className="text-xl font-black text-gray-900 mb-3 tracking-tight">AI Engine Processing</h3>
+               <p className="text-gray-500 text-sm max-w-[280px] font-medium leading-relaxed">
+                  Generating a mobile-first experience by mapping your document to HSBC's Design System.
+               </p>
             </div>
+          )}
 
-            {/* Mobile Device Frame */}
-            <div className="relative border-gray-900 bg-gray-900 border-[12px] rounded-[3.5rem] h-[780px] w-[375px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.2)] scale-[0.85] md:scale-100 origin-top mb-16">
-              {/* Speaker/Notch */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-gray-900 rounded-b-3xl z-50 flex items-center justify-center">
-                <div className="w-12 h-1.5 bg-gray-800 rounded-full"></div>
+          {isUploaded && !isProcessing && (
+            <div className="relative z-10 w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-700">
+              {/* Context Tooltip */}
+              <div className="mb-8 flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 text-xs font-bold text-gray-500 uppercase tracking-widest">
+                <Smartphone size={16} className="text-gray-400" /> Device Mockup • Pixel 7
               </div>
-              
-              {/* Side Buttons */}
-              <div className="h-[46px] w-[3px] bg-gray-900 absolute -start-[15px] top-[124px] rounded-s-lg"></div>
-              <div className="h-[46px] w-[3px] bg-gray-900 absolute -start-[15px] top-[178px] rounded-s-lg"></div>
-              <div className="h-[64px] w-[3px] bg-gray-900 absolute -end-[15px] top-[142px] rounded-e-lg"></div>
-              
-              {/* Screen Content */}
-              <div className="rounded-[2.8rem] overflow-hidden w-full h-full bg-white relative">
-                <div className="absolute inset-0 overflow-y-auto scrollbar-hide">
-                  {isProcessing ? (
-                    <div className="h-full bg-white flex flex-col items-center justify-center p-8 text-center animate-pulse">
-                      <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center text-hsbc-red mb-6 relative">
-                        <Zap size={40} className="animate-bounce" />
-                        <div className="absolute inset-0 rounded-full border-4 border-hsbc-red border-t-transparent animate-spin"></div>
-                      </div>
-                      <h4 className="text-lg font-bold text-gray-900 mb-2">Analyzing Document...</h4>
-                      <p className="text-sm text-gray-400 leading-relaxed font-medium px-4">
-                        Please wait while our AI extracts and maps the form data.
-                      </p>
-                    </div>
-                  ) : isUploaded ? (
-                    <div className="animate-in fade-in duration-700 h-full">
-                      {formType === "changeInfo" ? <ChangeInfoPage /> : <ClaimPage />}
-                    </div>
-                  ) : (
-                    <div className="h-full bg-white flex flex-col items-center justify-center p-8 text-center">
-                      <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center text-gray-300 mb-6">
-                        <FileText size={40} />
-                      </div>
-                      <h4 className="text-lg font-bold text-gray-900 mb-2">Awaiting Document</h4>
-                      <p className="text-sm text-gray-400 leading-relaxed font-medium px-4">
-                        Upload a form on the left to generate the interactive preview.
-                      </p>
-                    </div>
-                  )}
+
+              {/* Mobile Device Frame */}
+              <div className="relative border-gray-900 bg-gray-900 border-[12px] rounded-[3.5rem] h-[780px] w-[375px] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.2)] scale-[0.85] md:scale-100 origin-top mb-16">
+                {/* Speaker/Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-7 bg-gray-900 rounded-b-3xl z-50 flex items-center justify-center">
+                  <div className="w-12 h-1.5 bg-gray-800 rounded-full"></div>
+                </div>
+                
+                {/* Side Buttons */}
+                <div className="h-[46px] w-[3px] bg-gray-900 absolute -start-[15px] top-[124px] rounded-s-lg"></div>
+                <div className="h-[46px] w-[3px] bg-gray-900 absolute -start-[15px] top-[178px] rounded-s-lg"></div>
+                <div className="h-[64px] w-[3px] bg-gray-900 absolute -end-[15px] top-[142px] rounded-e-lg"></div>
+                
+                {/* Screen Content */}
+                <div className="rounded-[2.8rem] overflow-hidden w-full h-full bg-white relative">
+                  <div className="absolute inset-0">
+                    <iframe 
+                      key={previewKey}
+                      src={generatedRoute ? generatedRoute : (formType === "changeInfo" ? "/change-info" : "/claim")} 
+                      className="w-full h-full border-none scrollbar-hide"
+                    />
+                  </div>
                 </div>
               </div>
+              
+              {/* Resolution/Status Info */}
+              <div className="mt-8 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] flex gap-10">
+                <div className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-300 rounded-full"></div> 1080 x 2400 (20:9)</div>
+                <div className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-300 rounded-full"></div> 411 DPI (Adaptive)</div>
+              </div>
             </div>
-            
-            {/* Resolution/Status Info */}
-            <div className="mt-8 text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] flex gap-10">
-              <div className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-300 rounded-full"></div> 1080 x 2400 (20:9)</div>
-              <div className="flex items-center gap-2"><div className="w-1 h-1 bg-gray-300 rounded-full"></div> 411 DPI (Adaptive)</div>
-            </div>
-          </div>
+          )}
         </main>
       </div>
     </div>
