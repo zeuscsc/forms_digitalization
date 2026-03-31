@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/Input";
 import { QuantitySelector } from "@/components/ui/QuantitySelector";
 import { Button } from "@/components/ui/Button";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { Card } from "@/components/ui/Card";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { RadioGroup, RadioButton } from "@/components/ui/RadioGroup";
 import { FieldTitle } from "@/components/ui/FieldTitle";
 import { MobileStatusBar } from "@/components/ui/MobileStatusBar";
 import { Stepper } from "@/components/ui/Stepper";
+import { DeclarationStep } from "@/components/ui/DeclarationStep";
 import { ChevronLeft } from "lucide-react";
 
 const STEPS = [
@@ -49,19 +49,7 @@ export default function ClaimPage() {
   });
 
   const [hasScrolledToBottom, setHasScrolledToBottom] = React.useState(false);
-  const scrollRef = React.useRef<HTMLDivElement>(null);
-
-  const handleScroll = () => {
-    const element = scrollRef.current;
-    if (element) {
-      const { scrollTop, scrollHeight, clientHeight } = element;
-      // Standardized tolerance to 10px
-      if (Math.abs(scrollHeight - clientHeight - scrollTop) < 10) {
-        setHasScrolledToBottom(true);
-      }
-    }
-  };
-
+  const declarationAccepted = watch("declarationAccepted");
 
   const onSubmit: SubmitHandler<ClaimFormData> = (data) => {
     console.log("Form Data Submitted:", data);
@@ -389,77 +377,19 @@ export default function ClaimPage() {
 
           {/* Section 7: Declaration */}
           {currentStep === 6 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-              <Card>
-                <div className="mb-8">
-                  <h2 className="text-2xl font-bold text-hsbc-black mb-2">Review</h2>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="relative">
-                    <div 
-                      ref={scrollRef}
-                      onScroll={handleScroll}
-                      className="bg-gray-50 p-6 rounded-lg h-96 overflow-y-auto text-[11px] text-gray-700 leading-relaxed border border-gray-200"
-                    >
-                      <div className="text-center font-medium text-gray-500 mb-6 border-b border-gray-200 pb-2">--- Start of content ---</div>
-
-                      <h3 className="font-bold text-lg mb-4">Sample Terms and Conditions</h3>
-                      <p className="mb-4 text-xs text-gray-500">Please read these terms and conditions ("terms and conditions", "terms") carefully before using [website URL] website ("website", "service") operated by [company name] ("us", "we", "our").</p>
-                      
-                      <h4 className="font-bold mb-2 mt-6">Conditions of use</h4>
-                      <p className="mb-4">By using this website, you certify that you have read and reviewed this Agreement and that you agree to comply with its terms. If you do not want to be bound by the terms of this Agreement, you are advised to stop using the website accordingly. [company name] only grants use and access of this website, its products, and its services to those who have accepted its terms.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Privacy policy</h4>
-                      <p className="mb-4">Before you continue using our website, we advise you to read our privacy policy [link to privacy policy] regarding our user data collection. It will help you better understand our practices.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Age restriction</h4>
-                      <p className="mb-4">You must be at least 18 (eighteen) years of age before you can use this website. By using this website, you warrant that you are at least 18 years of age and you may legally adhere to this Agreement. [company name] assumes no responsibility for liabilities related to age misrepresentation.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Intellectual property</h4>
-                      <p className="mb-4">You agree that all materials, products, and services provided on this website are the property of [company name], its affiliates, directors, officers, employees, agents, suppliers, or licensors including all copyrights, trade secrets, trademarks, patents, and other intellectual property. You also agree that you will not reproduce or redistribute the [company name]'s intellectual property in any way, including electronic, digital, or new trademark registrations.</p>
-                      
-                      <h4 className="font-bold mb-2 mt-6">Applicable law</h4>
-                      <p className="mb-4">By using this website, you agree that the laws of the [your location], without regard to principles of conflict laws, will govern these terms and conditions, or any dispute of any sort that might come between [company name] and you, or its business partners and associates.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Disputes</h4>
-                      <p className="mb-4">Any dispute related in any way to your use of this website or to products you purchase from us shall be arbitrated by state or federal court [your location] and you consent to exclusive jurisdiction and venue of such courts.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Indemnification</h4>
-                      <p className="mb-4">You agree to indemnify [company name] and its affiliates and hold [company name] harmless against legal claims and demands that may arise from your use or misuse of our services. We reserve the right to select our own legal counsel.</p>
-
-                      <h4 className="font-bold mb-2 mt-6">Limitation on liability</h4>
-                      <p className="mb-4">[company name] is not liable for any damages that may occur to you as a result of your misuse of our website.</p>
-                      <p className="mb-4">[company name] reserves the right to edit, modify, and change this Agreement at any time. We shall let our users know of these changes through electronic mail. This Agreement is an understanding between [company name] and the user, and this supersedes and replaces all prior agreements regarding the use of this website.</p>
-
-                      <div className="text-center font-medium text-gray-500 mt-10 pt-4 border-t border-gray-200">
-                          --- End of content ---
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className={`transition-opacity duration-300 ${hasScrolledToBottom ? 'opacity-100' : 'opacity-50'}`}>
-                    <Checkbox
-                      // @ts-ignore
-                      {...register("declarationAccepted")}
-                      disabled={!hasScrolledToBottom}
-                      label="I have read and accepted the terms and conditions."
-                      id="agree"
-                    />
-                    {!hasScrolledToBottom && (
-                         <div className="text-xs text-hsbc-red font-medium mt-2 animate-pulse">
-                            Scroll to the bottom of the terms to continue
-                         </div>
-                    )}
-                    {/* @ts-ignore */}
-                    {errors.declarationAccepted && (
-                      // @ts-ignore
-                      <p className="text-hsbc-red text-sm mt-1 ml-9">{errors.declarationAccepted.message}</p>
-                    )}
-                  </div>
-                </div>
-              </Card>
-            </div>
+            <Controller
+              name="declarationAccepted"
+              control={control}
+              render={({ field }) => (
+                <DeclarationStep
+                  checked={Boolean(field.value)}
+                  onCheckedChange={field.onChange}
+                  error={errors.declarationAccepted?.message}
+                  hasScrolledToBottom={hasScrolledToBottom}
+                  onScrolledToBottom={() => setHasScrolledToBottom(true)}
+                />
+              )}
+            />
           )}
 
           {/* Sticky Bottom Action Bar - Standardized rounding and z-index */}
@@ -487,8 +417,7 @@ export default function ClaimPage() {
               <Button 
                 type="submit" 
                 variant="primary"
-                // @ts-ignore
-                disabled={!watch("declarationAccepted")}
+                disabled={!declarationAccepted}
                 className="flex-1 transition-all duration-300"
               >
                 Submit Claim

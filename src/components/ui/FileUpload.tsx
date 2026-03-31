@@ -4,14 +4,26 @@ import React, { useState, useRef } from "react";
 import { Upload, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "./Button";
 
+export interface FileUploadResult {
+  success: boolean;
+  message: string;
+  route?: string;
+  slug?: string;
+  pdfPath?: string;
+  uploadedAt?: string;
+  originalFileName?: string;
+}
+
 interface FileUploadProps {
-  onUploadSuccess: (file: File) => void;
+  onUploadSuccess?: (file: File, result?: FileUploadResult) => void;
+  endpoint?: string;
   acceptedFileTypes?: string[];
   maxSizeMB?: number;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
+  endpoint,
   acceptedFileTypes = [".pdf"],
   maxSizeMB = 10,
 }) => {
@@ -19,6 +31,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -66,20 +79,47 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const handleRemoveFile = () => {
     setFile(null);
     setError(null);
+    setSuccessMessage(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleStartUpload = () => {
+  const handleStartUpload = async () => {
     if (!file) return;
 
     setIsUploading(true);
-    // Simulate upload/parsing delay
-    setTimeout(() => {
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      if (!endpoint) {
+        onUploadSuccess?.(file);
+        setSuccessMessage("Seed file attached to the workspace.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = (await response.json()) as FileUploadResult & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error || "Unable to generate the page from the uploaded PDF.");
+      }
+
+      setSuccessMessage(result.message || "Generated page is ready.");
+      onUploadSuccess?.(file, result);
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Upload failed. Please try again.");
+    } finally {
       setIsUploading(false);
-      onUploadSuccess(file);
-    }, 2000);
+    }
   };
 
   return (
@@ -159,22 +199,33 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest">
                 <span className="flex items-center gap-2 text-gray-400">
                   <Loader2 className="animate-spin text-hsbc-red" size={14} />
-                  Analyzing...
+                  Uploading and generating...
                 </span>
-                <span className="text-hsbc-red tabular-nums">72%</span>
+                <span className="text-hsbc-red tabular-nums">AI</span>
               </div>
               <div className="h-2 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
-                <div className="h-full bg-hsbc-red w-[72%] rounded-full shadow-lg shadow-red-500/20 transition-all duration-1000 ease-out"></div>
+                <div className="h-full bg-hsbc-red w-full animate-pulse rounded-full shadow-lg shadow-red-500/20"></div>
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               <div className="flex items-center gap-2 text-[11px] text-green-600 font-black justify-center bg-green-50/50 py-2.5 rounded-xl border border-green-100 uppercase tracking-widest">
                 <CheckCircle2 size={14} />
-                Ready to Digitized
+                Ready to digitize
               </div>
+              {successMessage ? (
+                <div className="rounded-2xl border border-green-100 bg-green-50 px-4 py-3 text-xs font-medium leading-relaxed text-green-700">
+                  {successMessage}
+                </div>
+              ) : null}
+              {error ? (
+                <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-xs font-medium leading-relaxed text-hsbc-red">
+                  {error}
+                </div>
+              ) : null}
               <Button 
                 onClick={handleStartUpload} 
+                loading={isUploading}
                 className="w-full py-4 text-sm font-bold rounded-2xl shadow-lg shadow-hsbc-red/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 Start AI Digitization

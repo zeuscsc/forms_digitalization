@@ -36,6 +36,8 @@ next-env.d.ts
 
 # Project specific
 /raw_forms
+/uploaded_form
+/saved_digitalized_form
 *.zip
 
 figma
