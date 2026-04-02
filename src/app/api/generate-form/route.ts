@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
 import { spawn } from "child_process";
-import { LEGACY_UPLOADED_FORMS_DIR_NAME, registerGeneratedForm, UPLOADED_FORMS_DIR_NAME } from "@/lib/generatedFormsRegistry";
+import { registerGeneratedForm, UPLOADED_FORMS_DIR_NAME } from "@/lib/generatedFormsRegistry";
 
 interface GeminiRunResult {
   stdout: string;
@@ -19,36 +19,7 @@ function trimOutput(output: string) {
   return `${normalized.slice(-1200)}`;
 }
 
-function escapePromptPath(filePath: string) {
-  return filePath.split(path.sep).join("/");
-}
-
-async function buildGeminiPrompt(relativePdfPath: string, slug: string) {
-  const promptPath = path.join(process.cwd(), "prompts", "init.llm.prompt");
-  const basePrompt = await fs.readFile(promptPath, "utf8");
-  const normalizedPdfPath = escapePromptPath(relativePdfPath);
-  const generatedPagePath = `src/app/generated/${slug}/page.tsx`;
-  const generatedSchemaPath = `src/lib/schemas/generated/${slug}.ts`;
-  const updatedBasePrompt = basePrompt.replace(
-    new RegExp(`(${LEGACY_UPLOADED_FORMS_DIR_NAME}|${UPLOADED_FORMS_DIR_NAME})[\\\\/]+AccidentSuranceClaimForm\\.pdf`, "g"),
-    normalizedPdfPath
-  );
-
-  return [
-    `Work inside this Next.js repository and digitalize the uploaded PDF at \"${normalizedPdfPath}\".`,
-    `Create or update these files for the new generated route:`,
-    `- ${generatedPagePath}`,
-    `- ${generatedSchemaPath}`,
-    `The generated page must import its schema from \"@/lib/schemas/generated/${slug}\".`,
-    `Reuse the shared components under src/components/ui and match the styling guidance in the figma folder.`,
-    `Do not modify unrelated files unless a small import or route fix is required for the generated page to compile.`,
-    `When you finish, make sure the generated route path is /generated/${slug}.`,
-    "",
-    updatedBasePrompt,
-  ].join("\n");
-}
-
-async function runGemini(prompt: string): Promise<GeminiRunResult> {
+async function runGemini(pdfPath: string, slug: string): Promise<GeminiRunResult> {
   return new Promise((resolve, reject) => {
     const isWindows = process.platform === "win32";
     const command = isWindows ? "powershell.exe" : "gemini";
@@ -59,13 +30,13 @@ async function runGemini(prompt: string): Promise<GeminiRunResult> {
           "Bypass",
           "-File",
           path.join(process.env.APPDATA ?? "", "npm", "gemini.ps1"),
-          "-p",
-          "stdin",
+          "@.gemini/commands/digitalize.toml",
+          `${pdfPath} ${slug}`,
           "-y",
           "-o",
           "text",
         ]
-      : ["-p", "stdin", "-y", "-o", "text"];
+      : ["@.gemini/commands/digitalize.toml", `${pdfPath} ${slug}`, "-y", "-o", "text"];
 
     const child = spawn(command, args, {
       cwd: process.cwd(),
@@ -87,9 +58,6 @@ async function runGemini(prompt: string): Promise<GeminiRunResult> {
     child.on("error", (error) => {
       reject(error);
     });
-
-    child.stdin.write(prompt);
-    child.stdin.end();
 
     child.on("close", (code) => {
       if (code === 0) {
@@ -126,10 +94,9 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
     await fs.writeFile(pdfPath, buffer);
 
-    const prompt = await buildGeminiPrompt(relativePdfPath, slug);
     console.log(`Executing Gemini CLI for ${slug}`);
 
-    const { stdout, stderr } = await runGemini(prompt);
+    const { stdout, stderr } = await runGemini(relativePdfPath, slug);
 
     console.log("gemini-cli output:", stdout);
     if (stderr) {

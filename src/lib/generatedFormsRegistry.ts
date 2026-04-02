@@ -259,7 +259,7 @@ export async function listGeneratedForms(): Promise<GeneratedFormRecord[]> {
   );
   const savedDesignerSlugs = new Set(
     [...legacySavedDesignerFiles, ...savedDesignerFiles]
-      .filter((fileName) => fileName.endsWith(".json"))
+      .filter((fileName) => fileName.endsWith(".json") && fileName !== REGISTRY_FILE_NAME)
       .map((fileName) => fileName.replace(/\.json$/, ""))
   );
 
