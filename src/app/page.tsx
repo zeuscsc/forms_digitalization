@@ -54,8 +54,20 @@ export default function Home() {
       workspace.appendLog(`Uploaded ${file.name} as the current design seed`);
       void recentForms.loadRecentForms();
 
-      if (result?.route) {
-        workspace.appendLog(`Generated page ${result.slug ?? result.route} with Gemini CLI`);
+      if (result?.designer) {
+        try {
+          const parsed = parseDesignerDocument(result.designer);
+          workspace.replaceDesigner(parsed, getFirstSelection(parsed));
+          persistence.resetDraftState(parsed);
+          setSubmittedPayload(null);
+          setPayloadPreview({});
+          workspace.appendLog(`Loaded generated schema for ${result.slug ?? result.route} into the studio editor`);
+        } catch (e) {
+          console.error("Failed to parse generated designer document", e);
+          workspace.appendLog(`Generated schema for ${result.slug ?? result.route} was invalid`);
+        }
+      } else if (result?.route) {
+        workspace.appendLog(`Generated form schema for ${result.slug ?? result.route} with LiteLLM`);
         router.push(result.route);
       }
     },

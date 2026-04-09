@@ -44,10 +44,10 @@ export function UploadSeedPanel({
 
       <div className="mt-4 rounded-2xl border border-dashed border-hsbc-gray-200 bg-hsbc-gray-50 px-4 py-3 text-xs leading-relaxed text-hsbc-gray-500">
         {generatedRoute
-          ? `Generated route ready: ${generatedRoute}. You will be redirected there automatically after Gemini completes the page.`
+          ? `Schema generated. The uploaded file now drives the workspace name and context while you refine the mobile flow manually.`
           : seedFileName
             ? `Current seed: ${seedFileName}. The uploaded file now drives the workspace name and context while you refine the mobile flow manually.`
-            : "Upload a PDF to generate a page with Gemini CLI, then refine the structure and mobile flow with the shared UI components on the left."}
+            : "Upload a PDF to generate a dynamic form via LiteLLM, then refine the structure and mobile flow with the shared UI components on the left."}
       </div>
 
       <div className="mt-5 rounded-2xl border border-black/5 bg-[#fcfaf7] p-4">

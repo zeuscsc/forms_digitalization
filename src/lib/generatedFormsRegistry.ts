@@ -251,15 +251,17 @@ export async function listGeneratedForms(): Promise<GeneratedFormRecord[]> {
     rawUploads.set(match[1], path.posix.join(UPLOADED_FORMS_DIR_NAME, fileName));
   }
 
-  const pageSlugs = new Set(generatedPageDirectories);
+  const pageSlugs = new Set(
+    generatedPageDirectories.filter((dir) => dir.startsWith("generated-"))
+  );
   const schemaSlugs = new Set(
     generatedSchemaFiles
-      .filter((fileName) => fileName.endsWith(".ts"))
+      .filter((fileName) => fileName.startsWith("generated-") && fileName.endsWith(".ts"))
       .map((fileName) => fileName.replace(/\.ts$/, ""))
   );
   const savedDesignerSlugs = new Set(
     [...legacySavedDesignerFiles, ...savedDesignerFiles]
-      .filter((fileName) => fileName.endsWith(".json") && fileName !== REGISTRY_FILE_NAME)
+      .filter((fileName) => fileName.startsWith("generated-") && fileName.endsWith(".json") && fileName !== REGISTRY_FILE_NAME)
       .map((fileName) => fileName.replace(/\.json$/, ""))
   );
 

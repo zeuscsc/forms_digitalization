@@ -12,6 +12,7 @@ export interface FileUploadResult {
   pdfPath?: string;
   uploadedAt?: string;
   originalFileName?: string;
+  designer?: any;
 }
 
 interface FileUploadProps {

@@ -197,7 +197,7 @@ export function formatUploadedAt(value: string) {
 }
 
 export function getRecentFormState(form: RecentGeneratedForm) {
-  if (form.hasSavedDesigner) {
+  if (form.hasSavedDesigner && form.lastSavedAt) {
     return {
       badgeClassName: "bg-green-500",
       label: "Saved draft",
@@ -205,7 +205,8 @@ export function getRecentFormState(form: RecentGeneratedForm) {
     };
   }
 
-  if (form.hasGeneratedPage && form.hasSchema) {
+  // Fallback to hasSchema for legacy forms whose page.tsx was deleted
+  if (form.hasSavedDesigner || form.hasGeneratedPage || form.hasSchema) {
     return {
       badgeClassName: "bg-blue-500",
       label: "Generated form",
