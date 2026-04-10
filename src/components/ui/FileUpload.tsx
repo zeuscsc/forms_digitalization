@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Upload, FileText, X, CheckCircle2, Loader2 } from "lucide-react";
+import { Upload, FileText, X, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "./Button";
 
 export interface FileUploadResult {
@@ -86,7 +86,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     }
   };
 
-  const handleStartUpload = async () => {
+  const handleStartUpload = async (useImageFallback: boolean = false) => {
     if (!file) return;
 
     setIsUploading(true);
@@ -100,9 +100,33 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         return;
       }
 
-      const formData = new FormData();
-      formData.append("file", file);
+      let fileToUpload = file;
+      if (useImageFallback && file.type === "application/pdf") {
+        setSuccessMessage("Converting PDF to image for fallback...");
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (context) {
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          await page.render({ canvas: canvas, viewport }).promise;
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+          if (blob) {
+            fileToUpload = new File([blob], file.name.replace(".pdf", ".jpg"), { type: "image/jpeg" });
+          }
+        }
+      }
 
+      const formData = new FormData();
+      formData.append("file", fileToUpload);
+
+      setSuccessMessage(useImageFallback ? "Uploading converted image..." : null);
       const response = await fetch(endpoint, {
         method: "POST",
         body: formData,
@@ -111,6 +135,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({
       const result = (await response.json()) as FileUploadResult & { error?: string };
 
       if (!response.ok) {
+        if (!useImageFallback && file.type === "application/pdf") {
+          // Try fallback instead of throwing
+          console.warn("PDF upload failed. Trying image fallback...", result.error);
+          await handleStartUpload(true);
+          return;
+        }
         throw new Error(result.error || "Unable to generate the page from the uploaded PDF.");
       }
 
@@ -224,8 +254,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                   {error}
                 </div>
               ) : null}
-              <Button 
-                onClick={handleStartUpload} 
+              <Button
+                onClick={() => handleStartUpload(false)}
                 loading={isUploading}
                 className="w-full py-4 text-sm font-bold rounded-2xl shadow-lg shadow-hsbc-red/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
