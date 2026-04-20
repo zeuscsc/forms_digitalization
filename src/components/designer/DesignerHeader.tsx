@@ -2,7 +2,7 @@
 
 import React from "react";
 import Image from "next/image";
-import { Copy, Download, Save, Upload } from "lucide-react";
+import { BarChart2, Copy, Download, Save, Upload } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 interface DesignerHeaderProps {
@@ -78,6 +78,13 @@ export function DesignerHeader({
               {activeFormSlug ? `Draft ID: ${activeFormSlug}` : "This workspace has not been saved yet."}
             </p>
           </div>
+          <a
+            href="/form-stats"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-hsbc-gray-100 px-3 py-2 text-sm font-bold text-hsbc-black transition hover:bg-hsbc-gray-200"
+          >
+            <BarChart2 size={15} />
+            <span className="hidden md:inline">Form Stats</span>
+          </a>
           <Button variant="primary" onClick={onSave} disabled={isSaving || !hasUnsavedChanges} className="md:w-auto">
             <Save size={16} className="mr-2" />
             Save

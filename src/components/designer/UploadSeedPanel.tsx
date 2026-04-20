@@ -2,7 +2,7 @@
 
 import { UploadCloud } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { FileUpload, type FileUploadResult } from "@/components/ui/FileUpload";
+import { FileUpload, type BatchUploadSummary, type FileUploadResult } from "@/components/ui/FileUpload";
 import { formatUploadedAt, getRecentFormState, type RecentGeneratedForm } from "@/lib/designerWorkspace";
 
 interface UploadSeedPanelProps {
@@ -15,6 +15,7 @@ interface UploadSeedPanelProps {
   onOpenRecentForm: (form: RecentGeneratedForm) => void | Promise<void>;
   onRefreshRecentForms: () => void | Promise<void>;
   onUploadSuccess: (file: File, result?: FileUploadResult) => void;
+  onBatchComplete?: (summary: BatchUploadSummary) => void;
 }
 
 export function UploadSeedPanel({
@@ -27,6 +28,7 @@ export function UploadSeedPanel({
   onOpenRecentForm,
   onRefreshRecentForms,
   onUploadSuccess,
+  onBatchComplete,
 }: UploadSeedPanelProps) {
   return (
     <div className="rounded-[28px] border border-black/5 bg-white p-5 shadow-sm">
@@ -40,7 +42,7 @@ export function UploadSeedPanel({
         </div>
       </div>
 
-      <FileUpload endpoint="/api/generate-form" onUploadSuccess={onUploadSuccess} />
+      <FileUpload endpoint="/api/generate-form" onBatchComplete={onBatchComplete} onUploadSuccess={onUploadSuccess} />
 
       <div className="mt-4 rounded-2xl border border-dashed border-hsbc-gray-200 bg-hsbc-gray-50 px-4 py-3 text-xs leading-relaxed text-hsbc-gray-500">
         {generatedRoute

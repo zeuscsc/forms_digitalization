@@ -1,0 +1,68 @@
+{
+  "formsDirectory": "D:\\work\\HSBC\\forms_digitalization\\saved_digitalized_form",
+  "scannedFiles": [
+    "generated-1775710906362.json",
+    "generated-1776670998086-lic0sa.json",
+    "generated-1776673391734-9m9u5f.json",
+    "generated-1776673392034-pz2wl9.json"
+  ],
+  "analyzedForms": 4,
+  "failedFiles": [],
+  "totalComponentInstances": 137,
+  "componentUsage": {
+    "text": 75,
+    "radio": 22,
+    "date": 17,
+    "checkbox": 8,
+    "tel": 6,
+    "declaration": 5,
+    "email": 2,
+    "quantity": 2
+  },
+  "componentFormCoverage": {
+    "text": 4,
+    "date": 4,
+    "radio": 4,
+    "tel": 4,
+    "declaration": 4,
+    "checkbox": 2,
+    "email": 2,
+    "quantity": 2
+  },
+  "perForm": {
+    "generated-1775710906362.json": {
+      "text": 24,
+      "checkbox": 7,
+      "radio": 6,
+      "date": 3,
+      "tel": 3,
+      "email": 1,
+      "declaration": 1
+    },
+    "generated-1776670998086-lic0sa.json": {
+      "text": 19,
+      "date": 6,
+      "radio": 5,
+      "tel": 1,
+      "quantity": 1,
+      "declaration": 1
+    },
+    "generated-1776673391734-9m9u5f.json": {
+      "text": 18,
+      "date": 6,
+      "radio": 5,
+      "tel": 1,
+      "quantity": 1,
+      "declaration": 1
+    },
+    "generated-1776673392034-pz2wl9.json": {
+      "text": 14,
+      "radio": 6,
+      "date": 2,
+      "declaration": 2,
+      "checkbox": 1,
+      "tel": 1,
+      "email": 1
+    }
+  }
+}

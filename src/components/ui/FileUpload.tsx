@@ -15,8 +15,46 @@ export interface FileUploadResult {
   designer?: any;
 }
 
+interface BatchJobResult {
+  id: string;
+  status: "queued" | "running" | "success" | "failed";
+  attempts: number;
+  maxRetries: number;
+  originalFileName: string;
+  mimeType: string;
+  result?: {
+    slug: string;
+    route: string;
+    pdfPath: string;
+    uploadedAt: string;
+    originalFileName: string;
+  };
+  error?: string;
+}
+
+interface BatchProgress {
+  id: string;
+  status: "pending" | "running" | "completed" | "completed_with_errors" | "failed";
+  total: number;
+  queued: number;
+  running: number;
+  success: number;
+  failed: number;
+  jobs: BatchJobResult[];
+}
+
+export interface BatchUploadSummary {
+  batchId: string;
+  total: number;
+  success: number;
+  failed: number;
+  status: BatchProgress["status"];
+  jobs: BatchJobResult[];
+}
+
 interface FileUploadProps {
   onUploadSuccess?: (file: File, result?: FileUploadResult) => void;
+  onBatchComplete?: (summary: BatchUploadSummary) => void;
   endpoint?: string;
   acceptedFileTypes?: string[];
   maxSizeMB?: number;
@@ -24,16 +62,26 @@ interface FileUploadProps {
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onUploadSuccess,
+  onBatchComplete,
   endpoint,
   acceptedFileTypes = [".pdf"],
   maxSizeMB = 10,
 }) => {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const batchPollRef = useRef<number | null>(null);
+
+  const stopBatchPolling = () => {
+    if (batchPollRef.current !== null) {
+      window.clearInterval(batchPollRef.current);
+      batchPollRef.current = null;
+    }
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -45,17 +93,39 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setIsDragging(false);
   };
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = (file: File): string | null => {
     const extension = "." + file.name.split(".").pop()?.toLowerCase();
     if (!acceptedFileTypes.includes(extension)) {
-      setError(`Invalid file type. Please upload ${acceptedFileTypes.join(", ")}`);
-      return false;
+      return `Invalid file type: ${file.name}. Please upload ${acceptedFileTypes.join(", ")}`;
     }
+
     if (file.size > maxSizeMB * 1024 * 1024) {
-      setError(`File size exceeds ${maxSizeMB}MB`);
-      return false;
+      return `File size exceeds ${maxSizeMB}MB: ${file.name}`;
     }
-    return true;
+
+    return null;
+  };
+
+  const validateFiles = (candidateFiles: File[]) => {
+    const errors: string[] = [];
+    const validFiles: File[] = [];
+
+    for (const file of candidateFiles) {
+      const validationError = validateFile(file);
+
+      if (validationError) {
+        errors.push(validationError);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (errors.length > 0) {
+      setError(errors[0]);
+    }
+
+    return validFiles;
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -63,99 +133,241 @@ export const FileUpload: React.FC<FileUploadProps> = ({
     setIsDragging(false);
     setError(null);
 
-    const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && validateFile(droppedFile)) {
-      setFile(droppedFile);
+    const droppedFiles = Array.from(e.dataTransfer.files);
+    const validFiles = validateFiles(droppedFiles);
+
+    if (validFiles.length > 0) {
+      setFiles(validFiles);
+      setBatchProgress(null);
     }
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile && validateFile(selectedFile)) {
-      setFile(selectedFile);
+    const selectedFiles = Array.from(e.target.files || []);
+    const validFiles = validateFiles(selectedFiles);
+
+    if (validFiles.length > 0) {
+      setFiles(validFiles);
+      setBatchProgress(null);
     }
   };
 
-  const handleRemoveFile = () => {
-    setFile(null);
+  const handleRemoveFiles = () => {
+    stopBatchPolling();
+    setFiles([]);
+    setBatchProgress(null);
     setError(null);
     setSuccessMessage(null);
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleStartUpload = async (useImageFallback: boolean = false) => {
-    if (!file) return;
+  const resolveBatchEndpoint = () => {
+    if (!endpoint) {
+      return null;
+    }
+
+    return endpoint.endsWith("/") ? `${endpoint}batch` : `${endpoint}/batch`;
+  };
+
+  const finalizeBatchProgress = (batch: BatchProgress) => {
+    setBatchProgress(batch);
+    setIsUploading(false);
+    stopBatchPolling();
+
+    const summary: BatchUploadSummary = {
+      batchId: batch.id,
+      total: batch.total,
+      success: batch.success,
+      failed: batch.failed,
+      status: batch.status,
+      jobs: batch.jobs,
+    };
+
+    onBatchComplete?.(summary);
+
+    if (batch.status === "completed") {
+      setSuccessMessage(`Batch completed: ${batch.success}/${batch.total} succeeded.`);
+      return;
+    }
+
+    if (batch.status === "completed_with_errors") {
+      setSuccessMessage(`Batch completed with errors: ${batch.success}/${batch.total} succeeded.`);
+      return;
+    }
+
+    setError("Batch failed. Please review errors and retry.");
+  };
+
+  const startBatchPolling = (batchId: string) => {
+    stopBatchPolling();
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/generate-form/batch/${batchId}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const payload = (await response.json()) as {
+          batch?: BatchProgress;
+          error?: string;
+        };
+
+        if (!response.ok || !payload.batch) {
+          throw new Error(payload.error || "Unable to read batch progress.");
+        }
+
+        setBatchProgress(payload.batch);
+
+        if (
+          payload.batch.status === "completed" ||
+          payload.batch.status === "completed_with_errors" ||
+          payload.batch.status === "failed"
+        ) {
+          finalizeBatchProgress(payload.batch);
+        }
+      } catch (pollError) {
+        setIsUploading(false);
+        stopBatchPolling();
+        setError(pollError instanceof Error ? pollError.message : "Unable to read batch progress.");
+      }
+    };
+
+    void poll();
+    batchPollRef.current = window.setInterval(() => {
+      void poll();
+    }, 1500);
+  };
+
+  const uploadSingleFile = async (file: File, useImageFallback: boolean = false) => {
+    if (!endpoint) {
+      onUploadSuccess?.(file);
+      setSuccessMessage("Seed file attached to the workspace.");
+      return;
+    }
+
+    let fileToUpload = file;
+
+    if (useImageFallback && file.type === "application/pdf") {
+      setSuccessMessage("Converting PDF to image for fallback...");
+      const pdfjsLib = await import("pdfjs-dist");
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      const page = await pdf.getPage(1);
+      const viewport = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+
+      if (context) {
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        await page.render({ canvas: canvas, viewport }).promise;
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+
+        if (blob) {
+          fileToUpload = new File([blob], file.name.replace(".pdf", ".jpg"), { type: "image/jpeg" });
+        }
+      }
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileToUpload);
+
+    setSuccessMessage(useImageFallback ? "Uploading converted image..." : null);
+    const response = await fetch(endpoint, {
+      method: "POST",
+      body: formData,
+    });
+
+    const result = (await response.json()) as FileUploadResult & { error?: string };
+
+    if (!response.ok) {
+      if (!useImageFallback && file.type === "application/pdf") {
+        await uploadSingleFile(file, true);
+        return;
+      }
+
+      throw new Error(result.error || "Unable to generate the page from the uploaded PDF.");
+    }
+
+    setSuccessMessage(result.message || "Generated page is ready.");
+    onUploadSuccess?.(file, result);
+  };
+
+  const uploadBatch = async (selectedFiles: File[]) => {
+    const batchEndpoint = resolveBatchEndpoint();
+
+    if (!batchEndpoint) {
+      throw new Error("Batch upload requires an endpoint.");
+    }
+
+    const formData = new FormData();
+
+    for (const selectedFile of selectedFiles) {
+      formData.append("files", selectedFile);
+    }
+
+    const response = await fetch(batchEndpoint, {
+      method: "POST",
+      body: formData,
+    });
+
+    const payload = (await response.json()) as {
+      success?: boolean;
+      message?: string;
+      error?: string;
+      batch?: BatchProgress;
+    };
+
+    if (!response.ok || !payload.batch) {
+      throw new Error(payload.error || "Unable to enqueue batch upload.");
+    }
+
+    setSuccessMessage(payload.message || "Batch accepted and queued.");
+    setBatchProgress(payload.batch);
+    startBatchPolling(payload.batch.id);
+  };
+
+  const handleStartUpload = async () => {
+    if (files.length === 0) {
+      return;
+    }
 
     setIsUploading(true);
+    setBatchProgress(null);
     setError(null);
     setSuccessMessage(null);
 
     try {
-      if (!endpoint) {
-        onUploadSuccess?.(file);
-        setSuccessMessage("Seed file attached to the workspace.");
-        return;
+      if (files.length === 1) {
+        await uploadSingleFile(files[0]);
+      } else {
+        await uploadBatch(files);
       }
-
-      let fileToUpload = file;
-      if (useImageFallback && file.type === "application/pdf") {
-        setSuccessMessage("Converting PDF to image for fallback...");
-        const pdfjsLib = await import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-        
-        const arrayBuffer = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 2.0 });
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        if (context) {
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          await page.render({ canvas: canvas, viewport }).promise;
-          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
-          if (blob) {
-            fileToUpload = new File([blob], file.name.replace(".pdf", ".jpg"), { type: "image/jpeg" });
-          }
-        }
-      }
-
-      const formData = new FormData();
-      formData.append("file", fileToUpload);
-
-      setSuccessMessage(useImageFallback ? "Uploading converted image..." : null);
-      const response = await fetch(endpoint, {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = (await response.json()) as FileUploadResult & { error?: string };
-
-      if (!response.ok) {
-        if (!useImageFallback && file.type === "application/pdf") {
-          // Try fallback instead of throwing
-          console.warn("PDF upload failed. Trying image fallback...", result.error);
-          await handleStartUpload(true);
-          return;
-        }
-        throw new Error(result.error || "Unable to generate the page from the uploaded PDF.");
-      }
-
-      setSuccessMessage(result.message || "Generated page is ready.");
-      onUploadSuccess?.(file, result);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed. Please try again.");
     } finally {
-      setIsUploading(false);
+      if (files.length === 1) {
+        setIsUploading(false);
+      }
     }
   };
 
+  React.useEffect(() => {
+    return () => {
+      stopBatchPolling();
+    };
+  }, []);
+
   return (
     <div className="w-full">
-      {!file ? (
+      {files.length === 0 ? (
         <div
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
@@ -172,6 +384,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             ref={fileInputRef}
             onChange={handleFileSelect}
             accept={acceptedFileTypes.join(",")}
+            multiple
             className="hidden"
           />
           <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 ${
@@ -180,10 +393,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             <Upload size={32} strokeWidth={1.5} />
           </div>
           <h3 className="text-lg font-bold text-gray-900 mb-2">
-            Upload PDF form
+            Upload PDF forms
           </h3>
           <p className="text-xs text-gray-400 text-center mb-6 max-w-[200px] leading-relaxed font-medium">
-            Drag and drop your PDF here, or <span className="text-hsbc-red font-bold">browse</span>
+            Drag and drop one or many PDFs here, or <span className="text-hsbc-red font-bold">browse</span>
           </p>
           <div className="flex gap-2">
             {acceptedFileTypes.map((ext) => (
@@ -209,15 +422,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <h4 className="text-sm font-bold text-gray-900 truncate mb-0.5">
-                {file.name}
+                {files.length === 1 ? files[0].name : `${files.length} files selected`}
               </h4>
               <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                {(file.size / (1024 * 1024)).toFixed(2)} MB • PDF
+                {`${(files.reduce((total, file) => total + file.size, 0) / (1024 * 1024)).toFixed(2)} MB • ${files.length} PDF`}
               </p>
             </div>
             {!isUploading && (
               <button
-                onClick={handleRemoveFile}
+                onClick={handleRemoveFiles}
                 className="p-2 hover:bg-red-50 hover:text-hsbc-red rounded-full transition-all duration-300 text-gray-300"
               >
                 <X size={20} />
@@ -225,18 +438,41 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             )}
           </div>
 
+          {files.length > 1 ? (
+            <div className="mb-5 max-h-36 overflow-y-auto rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2">
+              {files.slice(0, 8).map((entry) => (
+                <div key={`${entry.name}-${entry.size}`} className="truncate py-1 text-[11px] text-gray-500">
+                  {entry.name}
+                </div>
+              ))}
+              {files.length > 8 ? (
+                <div className="pt-1 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                  +{files.length - 8} more
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {isUploading ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-widest">
                 <span className="flex items-center gap-2 text-gray-400">
                   <Loader2 className="animate-spin text-hsbc-red" size={14} />
-                  Uploading and generating...
+                  {files.length > 1 ? "Queueing and processing batch..." : "Uploading and generating..."}
                 </span>
                 <span className="text-hsbc-red tabular-nums">AI</span>
               </div>
               <div className="h-2 bg-gray-50 rounded-full overflow-hidden border border-gray-100">
                 <div className="h-full bg-hsbc-red w-full animate-pulse rounded-full shadow-lg shadow-red-500/20"></div>
               </div>
+              {batchProgress ? (
+                <div className="grid grid-cols-4 gap-2 text-[10px] uppercase tracking-wider text-gray-500">
+                  <div className="rounded-lg bg-gray-50 px-2 py-1 text-center">Q {batchProgress.queued}</div>
+                  <div className="rounded-lg bg-gray-50 px-2 py-1 text-center">R {batchProgress.running}</div>
+                  <div className="rounded-lg bg-green-50 px-2 py-1 text-center text-green-700">S {batchProgress.success}</div>
+                  <div className="rounded-lg bg-red-50 px-2 py-1 text-center text-hsbc-red">F {batchProgress.failed}</div>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="flex flex-col gap-4">
@@ -255,11 +491,11 @@ export const FileUpload: React.FC<FileUploadProps> = ({
                 </div>
               ) : null}
               <Button
-                onClick={() => handleStartUpload(false)}
+                onClick={handleStartUpload}
                 loading={isUploading}
                 className="w-full py-4 text-sm font-bold rounded-2xl shadow-lg shadow-hsbc-red/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                Start AI Digitization
+                {files.length > 1 ? `Start AI Batch Digitization (${files.length})` : "Start AI Digitization"}
               </Button>
             </div>
           )}

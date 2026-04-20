@@ -11,7 +11,7 @@ import { InspectorPanel } from "@/components/designer/InspectorPanel";
 import { PreviewTestingPanel } from "@/components/designer/PreviewTestingPanel";
 import { ThemePanel } from "@/components/designer/ThemePanel";
 import { UploadSeedPanel } from "@/components/designer/UploadSeedPanel";
-import { type FileUploadResult } from "@/components/ui/FileUpload";
+import { type BatchUploadSummary, type FileUploadResult } from "@/components/ui/FileUpload";
 import { useDesignerPersistence } from "@/hooks/useDesignerPersistence";
 import { useDesignerWorkspace } from "@/hooks/useDesignerWorkspace";
 import { useRecentFormsRegistry } from "@/hooks/useRecentFormsRegistry";
@@ -91,6 +91,23 @@ export default function Home() {
     [persistence, recentForms, workspace]
   );
 
+  const handleBatchUploadComplete = React.useCallback(
+    (summary: BatchUploadSummary) => {
+      const statusLabel =
+        summary.status === "completed"
+          ? "completed"
+          : summary.status === "completed_with_errors"
+            ? "completed with errors"
+            : "failed";
+
+      workspace.appendLog(
+        `Batch ${summary.batchId} ${statusLabel}: ${summary.success}/${summary.total} succeeded${summary.failed > 0 ? `, ${summary.failed} failed` : ""}`
+      );
+      void recentForms.loadRecentForms();
+    },
+    [recentForms, workspace]
+  );
+
   const handleReset = React.useCallback(() => {
     const nextDesigner = createBlankDesigner();
 
@@ -157,6 +174,7 @@ export default function Home() {
                 recentForms={recentForms.recentForms}
                 recentFormsError={recentForms.recentFormsError}
                 seedFileName={persistence.seedFileName}
+                onBatchComplete={handleBatchUploadComplete}
                 onOpenRecentForm={handleOpenRecentForm}
                 onRefreshRecentForms={() => recentForms.loadRecentForms()}
                 onUploadSuccess={handleSeedUpload}
